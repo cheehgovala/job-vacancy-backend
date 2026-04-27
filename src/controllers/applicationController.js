@@ -18,3 +18,58 @@ const calculateProfileMatch = (job, user) => {
   } else {
     score += 50; // no specific skill requirements
   }
+   
+  // 2. Experience level Match (up to 50 points)
+  // Simplified matching: if entry-level required, everyone gets 50
+  // if senior, we check if they have multiple experience entries
+  const numJobs = (profile.experience || []).length;
+  if (job.experienceLevel === 'Executive' && numJobs > 4) score += 50;
+  else if (job.experienceLevel === 'Senior-Level' && numJobs >= 3) score += 50;
+  else if (job.experienceLevel === 'Mid-Level' && numJobs >= 1) score += 50;
+  else if (job.experienceLevel === 'Entry-Level') score += 50;
+  else score += 25; // Default partial points
+  
+  return Math.min(100, Math.round(score));
+};
+
+export const applyToJob = async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    const userId = req.user?.userId;
+    if (!userId) {
+      res.status(401).json({ error: 'Not authenticated' });
+      return;
+    }
+
+    const user = await User.findById(userId);
+    if (!user?.hasActiveSubscription) {
+      res.status(403).json({ error: 'Active subscription required to apply for jobs' });
+      return;
+    }
+
+    const job = await Job.findById(jobId);
+    if (!job) {
+      res.status(404).json({ error: 'Job not found' });
+      return;
+    }
+
+    const existingApplication = await Application.findOne({ jobId, applicantId: userId });
+    if (existingApplication) {
+      res.status(400).json({ error: 'You have already applied for this job' });
+      return;
+    }
+
+    const matchScoreBase = calculateProfileMatch(job, user);
+
+    const application = await Application.create({
+      jobId,
+      applicantId: userId,
+      status: 'Pending',
+      matchScore: matchScoreBase
+    });
+
+    res.status(201).json({ message: 'Application submitted perfectly', application });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
