@@ -38,3 +38,50 @@ export const initPayment = async (req, res, next) => {
 
     const amount = PLAN_DETAILS[planId].price;
     const tx_ref = `SUB-${user._id}-${Date.now()}`;
+  const payload = {
+      amount: String(amount),
+      currency: CURRENCY,
+      email: user.email,
+      first_name: user.name.split(' ')[0],
+      last_name: user.name.split(' ').slice(1).join(' ') || 'User',
+      callback_url: CALLBACK_URL,
+      return_url: FRONTEND_URL,
+      tx_ref,
+    };
+
+    // Call PayChangu API
+    const resp = await pcFetch("/payment", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+
+    const checkoutUrl = resp?.data?.checkout_url;
+    if (!checkoutUrl) throw new Error("No checkout_url returned by PayChangu");
+
+    // Save pending payment record
+    const newPayment = new Payment({
+      user: userId,
+      amount: amount,
+      currency: CURRENCY,
+      planId: planId,
+      paymentMethod: 'card', 
+      status: 'pending',
+      paymentRef: tx_ref,
+      createdAt: new Date()
+    });
+
+    await newPayment.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Checkout session created",
+      checkout_url: checkoutUrl,
+      tx_ref,
+      paymentId: newPayment._id 
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Verify payment after redirect
