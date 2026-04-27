@@ -198,3 +198,85 @@ export const webhookHandler = async (req, res, next) => {
           );
        }
     }
+    
+    return res.status(200).send("ok");
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Logic to get payment by User
+export const getPaymentsByUser = async (req, res, next) => {
+  try {
+    const userId = req.user._id; 
+    const { status } = req.query;
+
+    const filter = { user: userId };
+    if (status) {
+      filter.status = status;
+    }
+
+    const payments = await Payment.find(filter)
+      .sort({ createdAt: -1 }) 
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      data: payments,
+      count: payments.length
+    });
+
+  } catch (error) {
+      next(error);
+  }
+};
+
+// Logic to cancel payment
+export const cancelPayment = async (req, res, next) => {
+  try {
+    const { paymentId } = req.params;
+    const userId = req.user._id;
+
+    if (!paymentId) {
+      return res.status(400).json({
+        success: false,
+        message: "Payment ID is required"
+      });
+    }
+
+    const payment = await Payment.findOne({
+      _id: paymentId,
+      user: userId
+    });
+
+    if (!payment) {
+      return res.status(404).json({
+        success: false,
+        message: "Payment not found or you are not authorized to cancel this payment"
+      });
+    }
+
+    if (payment.status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot cancel payment with status: ${payment.status}. Only pending payments can be cancelled.`
+      });
+    }
+
+    payment.status = 'failed';
+    await payment.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Payment cancelled successfully",
+      data: {
+        paymentId: payment._id,
+        status: payment.status,
+        paymentRef: payment.paymentRef
+      }
+    });
+
+  } catch (error) {
+    next(error);
+  }
+};
