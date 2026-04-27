@@ -67,3 +67,12 @@ export const sendShortlistEmail = async (email, jobTitle, applicantName) => {
         </div>
       `
     };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Shortlist Email sent: ' + info.response);
+    return true;
+  } catch (error) {
+    console.error('Error sending Shortlist email:', error);
+    return false;
+  }
+};
