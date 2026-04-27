@@ -83,3 +83,27 @@ export const verifyOTP = async (req, res) => {
     if (!user.otp || !user.otpExpiry || Date.now() > user.otpExpiry) {
       return res.status(400).json({ error: 'OTP expired or not found' });
     }
+
+    const isMatch = await bcrypt.compare(otp, user.otp);
+    if (!isMatch) {
+      return res.status(400).json({ error: 'Invalid OTP' });
+    }
+
+    // OTP verified successfully
+    user.isVerified = true;
+    user.otp = undefined;
+    user.otpExpiry = undefined;
+    await user.save();
+
+    res.json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      token: generateToken(user._id.toString(), user.role)
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
