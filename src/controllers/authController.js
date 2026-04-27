@@ -251,3 +251,20 @@ export const verifyUserDocuments = async (req, res) => {
     if (!['Pending', 'Verified', 'Rejected'].includes(status)) {
       return res.status(400).json({ error: 'Invalid status provided. Must be Pending, Verified, or Rejected.' });
     }
+
+    const targetUser = await User.findById(req.params.id);
+    if (!targetUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    targetUser.documentStatus = status;
+    await targetUser.save();
+
+    res.json({
+      message: `User documents marked as ${status}`,
+      user: targetUser
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
