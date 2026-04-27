@@ -186,3 +186,68 @@ export const updateProfile = async (req, res) => {
         ...req.body,
         personal: personal || user.seekerProfile?.personal
       };
+
+      if (req.body.personal?.nationalIdUrl || (req.body.certifications && req.body.certifications.some(c => c.attachmentUrl))) {
+        user.documentStatus = 'Pending';
+      }
+    } else if (user.role === 'employer') {
+      const { companyName, companyDescription, companyWebsite, companyLogo } = req.body;
+      user.employerProfile = {
+        ...user.employerProfile,
+        companyName: companyName !== undefined ? companyName : user.employerProfile?.companyName,
+        companyDescription: companyDescription !== undefined ? companyDescription : user.employerProfile?.companyDescription,
+        companyWebsite: companyWebsite !== undefined ? companyWebsite : user.employerProfile?.companyWebsite,
+        companyLogo: companyLogo !== undefined ? companyLogo : user.employerProfile?.companyLogo,
+      };
+      
+      // Update top-level name if companyName changed (so frontend register maps cleanly to companyName in profile context as well)
+      if (companyName) {
+         user.name = companyName;
+      }
+    }
+
+    await user.save();
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const updateProfilePicture = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No image file provided' });
+    }
+
+    const user = await User.findById(req.user?.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const imageUrl = `/uploads/${req.file.filename}`;
+    user.profilePicture = imageUrl;
+
+    // Optional: map to employer logo if they are an employer
+    if (user.role === 'employer') {
+        user.employerProfile = {
+           ...user.employerProfile,
+           companyLogo: imageUrl
+        };
+    }
+
+    await user.save();
+    
+    res.json({
+      message: 'Profile picture updated successfully',
+      profilePicture: user.profilePicture,
+      user
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const verifyUserDocuments = async (req, res) => {
+  try {
+    const { status } = req.body;
+    if (!['Pending', 'Verified', 'Rejected'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status provided. Must be Pending, Verified, or Rejected.' });
+    }
