@@ -49,3 +49,37 @@ export const register = async (req, res) => {
       otp: hashedOtp,
       otpExpiry: Date.now() + 10 * 60 * 1000 // 10 minutes
     });
+    
+    if (user) {
+      // Send OTP Email
+      await sendOTPEmail(email, otp);
+      
+      res.status(201).json({
+        message: 'Registration successful. Please verify your email with the OTP sent to you.',
+        requireOTP: true,
+        email: user.email
+      });
+    } else {
+      res.status(400).json({ error: 'Invalid user data' });
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const verifyOTP = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (user.isVerified) {
+      return res.status(400).json({ error: 'User is already verified' });
+    }
+
+    if (!user.otp || !user.otpExpiry || Date.now() > user.otpExpiry) {
+      return res.status(400).json({ error: 'OTP expired or not found' });
+    }
