@@ -73,3 +73,49 @@ export const applyToJob = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+export const getMyApplications = async (req, res) => {
+  try {
+    const applications = await Application.find({ applicantId: req.user?.userId })
+      .populate('jobId', 'title location salary');
+    res.json(applications);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const getJobApplications = async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    
+    const job = await Job.findById(jobId);
+    if (!job) {
+      res.status(404).json({ error: 'Job not found' });
+      return;
+    }
+
+    if (job.employerId.toString() !== req.user?.userId) {
+      res.status(403).json({ error: 'Not authorized to view these applications' });
+      return;
+    }
+
+    const applications = await Application.find({ jobId })
+      .populate('applicantId', 'email seekerProfile')
+      .sort({ matchScore: -1 });
+      
+    res.json(applications);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const updateApplicationStatus = async (req, res) => {
+  try {
+    const { applicationId } = req.params;
+    const { status } = req.body;
+
+    const application = await Application.findById(applicationId).populate('jobId').populate('applicantId');
+    if (!application) {
+      res.status(404).json({ error: 'Application not found' });
+      return;
+    }
