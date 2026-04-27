@@ -120,3 +120,81 @@ const verify = async (req, res, next) => {
       if (verifyResponse?.data?.transaction_id) {
         foundPayment.transactionId = verifyResponse.data.transaction_id;
       }
+      
+      await foundPayment.save();
+
+      // UPDATE USER SUBSCRIPTION STATUS 
+      if (isSuccess && foundPayment.status === "completed") {
+        const durationDays = foundPayment.planId === 'seeker_basic' ? 3 : 30; // Basic is 3 days, premium/employer is 30 days
+        const expiryDate = new Date();
+        expiryDate.setDate(expiryDate.getDate() + durationDays);
+
+        await User.findByIdAndUpdate(
+          foundPayment.user,
+          { 
+            hasActiveSubscription: true,
+            subscriptionPlan: foundPayment.planId,
+            subscriptionExpiry: expiryDate
+          },
+          { new: true }
+        );
+      }
+    }
+
+    // Redirect for browser requests
+    const dest = isSuccess
+      ? `${FRONTEND_URL}/payment-success?plan=${foundPayment?.planId || 'seeker_basic'}`
+      : `${FRONTEND_URL}/payment-failed`; 
+    
+    return res.redirect(dest);
+
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Webhook logic
+export const webhookHandler = async (req, res, next) => {
+  try {
+    const signatureHeader = req.header("Signature") || "";
+    const raw = req.body; 
+    if (!WEBHOOK_SECRET) {
+      console.warn("No PAYCHANGU_WEBHOOK_SECRET configured");
+      return res.status(400).send("Webhook secret not configured");
+    }
+
+    // Compute HMAC
+    const computed = crypto.createHmac("sha256", WEBHOOK_SECRET).update(raw).digest("hex");
+    if (computed !== signatureHeader) {
+      console.warn("Invalid webhook signature");
+      return res.status(400).send("Invalid signature");
+    }
+
+    const event = JSON.parse(raw.toString("utf8"));
+    const txRef = event?.data?.tx_ref || event?.tx_ref;
+    const status = event?.data?.status || event?.status;
+
+    if (!txRef) return res.status(200).send("ok");
+
+    // Process payment success (similar to verify)
+    if (status === 'success') {
+       const foundPayment = await Payment.findOne({ paymentRef: txRef });
+       if (foundPayment && foundPayment.status === 'pending') {
+          foundPayment.status = "completed";
+          foundPayment.paidAt = new Date();
+          await foundPayment.save();
+
+          const durationDays = foundPayment.planId === 'seeker_basic' ? 3 : 30;
+          const expiryDate = new Date();
+          expiryDate.setDate(expiryDate.getDate() + durationDays);
+
+          await User.findByIdAndUpdate(
+            foundPayment.user,
+            { 
+              hasActiveSubscription: true,
+              subscriptionPlan: foundPayment.planId,
+              subscriptionExpiry: expiryDate
+            }
+          );
+       }
+    }
