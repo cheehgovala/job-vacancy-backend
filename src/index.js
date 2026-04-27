@@ -73,3 +73,21 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
     res.status(500).json({ error: 'Failed to upload image' });
   }
 });
+// Connect to MongoDB
+const connectDB = async () => {
+  try {
+    const conn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/job-vacancy');
+    console.log(`MongoDB Connected: ${conn.connection.host}`);
+    
+    app.listen(PORT, () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+  } catch (error) {
+    console.error('\n' + '='.repeat(60));
+    console.error('❌ MONGODB CONNECTION ERROR ❌');
+    console.error(error);
+    process.exit(1);
+  }
+};
+
+connectDB();
