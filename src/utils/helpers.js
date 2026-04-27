@@ -12,3 +12,33 @@ export const pcFetch = async (path, init = {}) => {
       ...(init.headers || {}),
     },
   });
+
+  // Get raw text and parse JSON safely
+  const text = await res.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    console.error("Invalid JSON from PayChangu:", text);
+    throw new Error(`Invalid response from PayChangu: ${text.substring(0, 100)}`);
+  }
+
+  // Log full response for debugging
+  if (!res.ok) {
+    console.error("PayChangu API Error:", {
+      status: res.status,
+      body: data,
+    });
+
+    // Extract readable error message
+    let errorMsg =
+      data?.message ||
+      (typeof data?.error === "string" ? data.error : null) ||
+      (data?.errors ? JSON.stringify(data.errors) : null) ||
+      `PayChangu error (${res.status})`;
+
+    throw new Error(errorMsg);
+  }
+
+  return data;
+};
