@@ -138,3 +138,51 @@ export const login = async (req, res) => {
   }
 };
 
+export const getProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user?.userId).select('-password').populate('savedJobs', 'title location');
+    if (user) {
+      res.json(user);
+    } else {
+      res.status(404).json({ error: 'User not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const updateSubscription = async (req, res) => {
+  try {
+    const { plan, durationDays } = req.body;
+    
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + durationDays);
+
+    const user = await User.findByIdAndUpdate(
+      req.user?.userId,
+      {
+        hasActiveSubscription: true,
+        subscriptionPlan: plan,
+        subscriptionExpiry: expiryDate
+      },
+      { new: true }
+    ).select('-password');
+
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const updateProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user?.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    if (user.role === 'seeker') {
+      const { personal, resume, skills, experience, education, completeness } = req.body;
+      user.seekerProfile = {
+        ...user.seekerProfile,
+        ...req.body,
+        personal: personal || user.seekerProfile?.personal
+      };
