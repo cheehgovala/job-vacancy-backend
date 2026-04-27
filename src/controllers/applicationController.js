@@ -119,3 +119,25 @@ export const updateApplicationStatus = async (req, res) => {
       res.status(404).json({ error: 'Application not found' });
       return;
     }
+    
+    const job = application.jobId;
+    if (job.employerId.toString() !== req.user?.userId) {
+      res.status(403).json({ error: 'Not authorized to update this application' });
+      return;
+    }
+
+    application.status = status;
+    await application.save();
+
+    if (status === 'Shortlisted' && application.applicantId?.email) {
+      const applicantName = application.applicantId.seekerProfile?.firstName || 'Applicant';
+      // send email in background
+      sendShortlistEmail(application.applicantId.email, job.title, applicantName);
+    }
+
+    res.json({ message: 'Application status updated successfully', application });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
