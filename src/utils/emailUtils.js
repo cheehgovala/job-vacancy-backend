@@ -13,3 +13,21 @@ export const sendOTPEmail = async (email, otp) => {
         pass: process.env.EMAIL_PASS
       }
     });
+    
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'TalentMw - Verify Your Email',
+      html: `
+        <div style="font-family: Arial, sans-serif; text-align: center; max-width: 600px; margin: 0 auto; border: 1px solid #e1e4e8; border-radius: 8px; padding: 20px;">
+          <h2 style="color: #4F46E5;">Welcome to TalentMw!</h2>
+          <p style="color: #4b5563; font-size: 16px;">Thank you for registering. Please use the verification code below to complete your registration.</p>
+          <div style="background-color: #f3f4f6; margin: 20px 0; padding: 20px; border-radius: 8px;">
+            <span style="font-size: 32px; font-weight: bold; letter-spacing: 4px; color: #111827;">${otp}</span>
+          </div>
+          <p style="color: #6b7280; font-size: 14px;">This code will expire in 10 minutes.</p>
+          <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
+          <p style="color: #9ca3af; font-size: 12px;">If you did not request this, please ignore this email.</p>
+        </div>
+      `
+    };
