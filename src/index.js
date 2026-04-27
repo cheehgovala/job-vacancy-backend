@@ -34,3 +34,42 @@ app.use('/uploads', express.static(path.join(__dirname, '../../uploads')));
 app.get('/', (req, res) => {
   res.send('Job Vacancy API is running...');
 });
+// App Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/jobs', jobRoutes);
+app.use('/api/applications', applicationRoutes);
+app.use('/api/assessments', assessmentRoutes);
+app.use('/api/payments', paymentRoutes);
+
+// Example route to verify the API is running
+app.get('/api', (req, res) => {
+  res.json({ message: 'Welcome to the Job Vacancy Backend API!' });
+});
+
+// Example route for uploading an image and saving to MongoDB
+app.post('/api/upload', upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) {
+       res.status(400).json({ error: 'No image file provided' });
+       return;
+    }
+
+    const imageUrl = `/uploads/${req.file.filename}`;
+
+    const newImageRecord = new ImageRecord({
+      filename: req.file.filename,
+      url: imageUrl
+    });
+    
+    await newImageRecord.save();
+
+    res.status(201).json({
+      message: 'Image uploaded successfully!',
+      file: req.file,
+      record: newImageRecord
+    });
+  } catch (error) {
+    console.error('Upload Error:', error);
+    res.status(500).json({ error: 'Failed to upload image' });
+  }
+});
