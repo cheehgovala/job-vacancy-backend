@@ -103,3 +103,54 @@ export const submitAssessment = async (req, res) => {
       });
       finalScore = Math.round((correctCount / exam.questions.length) * 100);
     }
+
+    session.endTime = Date.now();
+    session.score = finalScore;
+    session.isCompleted = true;
+    await session.save();
+
+    // Re-evaluate application score and status
+    // Old matchScore (skills + exp) + ExamScore combined weighting
+    const combinedScore = Math.round((application.matchScore + finalScore) / 2);
+    application.matchScore = combinedScore;
+
+    // Automatic pre-screening threshold
+    if (finalScore < exam.passThreshold) {
+      application.status = 'Rejected';
+    } else {
+      application.status = 'Under Review';
+    }
+
+    await application.save();
+
+    res.status(200).json({ 
+      message: 'Assessment submitted successfully.', 
+      score: finalScore,
+      passed: finalScore >= exam.passThreshold 
+    });
+
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const logViolation = async (req, res) => {
+  try {
+    const { sessionId, event } = req.body;
+    const applicantId = req.user?.userId;
+
+    const session = await AssessmentSession.findOne({ _id: sessionId, applicantId });
+    if (!session) return res.status(404).json({ error: 'Session not found' });
+    
+    if (session.isCompleted) {
+      return res.status(400).json({ error: 'Assessment already completed.' });
+    }
+
+    session.violationLogs.push({ event, timestamp: Date.now() });
+    
+    // Auto flag if too many violations
+    if (session.violationLogs.length >= 3 && !session.isFlagged) {
+      session.isFlagged = true;
+      session.flagReason = 'Excessive environment violations (e.g. Tab switching).';
+    }
+    
