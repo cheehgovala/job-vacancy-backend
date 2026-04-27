@@ -84,4 +84,39 @@ export const initPayment = async (req, res, next) => {
   }
 };
 
-// Verify payment after redirect
+const verify = async (req, res, next) => {
+  try {
+    const { tx_ref, status } = req.query;
+    
+    if (!tx_ref) {
+      return res.status(400).json({
+        success: false,
+        message: "tx_ref missing"
+      });
+    }
+
+    const verifyResponse = await pcFetch(`/verify-payment/${encodeURIComponent(tx_ref)}`, { 
+      method: "GET" 
+    });
+
+    const isSuccess = verifyResponse?.status === "success" && verifyResponse?.data?.status === "success";
+    const amount = verifyResponse?.data?.amount;
+    const currency = verifyResponse?.data?.currency;
+
+    const foundPayment = await Payment.findOne({ paymentRef: tx_ref });
+    
+    if (foundPayment) {
+      if (isSuccess) {
+        if (Number(foundPayment.amount) === Number(amount) && currency === CURRENCY) {
+          foundPayment.status = "completed";
+          foundPayment.paidAt = new Date();
+        } else {
+          foundPayment.status = "failed";
+        }
+      } else {
+        foundPayment.status = "failed";
+      }
+
+      if (verifyResponse?.data?.transaction_id) {
+        foundPayment.transactionId = verifyResponse.data.transaction_id;
+      }
