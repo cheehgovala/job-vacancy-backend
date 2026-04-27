@@ -154,3 +154,39 @@ export const logViolation = async (req, res) => {
       session.flagReason = 'Excessive environment violations (e.g. Tab switching).';
     }
     
+    await session.save();
+    res.status(200).json({ message: 'Violation logged', isFlagged: session.isFlagged });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const uploadSnapshot = async (req, res) => {
+  try {
+    const { sessionId, imageBase64 } = req.body;
+    const applicantId = req.user?.userId;
+
+    const session = await AssessmentSession.findOne({ _id: sessionId, applicantId });
+    if (!session) return res.status(404).json({ error: 'Session not found' });
+    
+    if (session.isCompleted) {
+      return res.status(400).json({ error: 'Assessment already completed.' });
+    }
+
+    if (!imageBase64) {
+      return res.status(400).json({ error: 'Image data is required' });
+    }
+
+    // Upload to cloudinary
+    const result = await cloudinary.uploader.upload(imageBase64, {
+      folder: 'assessments/snapshots',
+    });
+
+    session.snapshots.push(result.secure_url);
+    await session.save();
+
+    res.status(200).json({ message: 'Snapshot saved' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
