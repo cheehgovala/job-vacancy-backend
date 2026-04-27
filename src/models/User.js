@@ -22,3 +22,32 @@ const UserSchema = new mongoose.Schema({
       bio: String,
       nationalIdUrl: String
     },
+     resume: String,
+    skills: [{ type: String }],
+    experience: [{
+      company: String,
+      title: String,
+      startDate: Date,
+      endDate: Date,
+      description: String
+    }],
+    education: [{
+      institution: String,
+      degree: String,
+      fieldOfStudy: String,
+      startDate: Date,
+      endDate: Date
+    }],
+    certifications: [{
+      name: String,
+      organization: String,
+      year: String,
+      attachmentUrl: String
+    }],
+    references: [{
+      name: String,
+      role: String,
+      contact: String
+    }],
+    completeness: { type: Number, default: 0 }
+  },
