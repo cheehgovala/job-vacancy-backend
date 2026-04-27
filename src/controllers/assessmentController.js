@@ -67,3 +67,39 @@ export const startAssessment = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+export const submitAssessment = async (req, res) => {
+  try {
+    const { sessionId, answers } = req.body; // answers is a record/object mapping questionId -> selectedOptionIndex
+    const applicantId = req.user?.userId;
+
+    const session = await AssessmentSession.findOne({ _id: sessionId, applicantId });
+    if (!session) return res.status(404).json({ error: 'Session not found' });
+    
+    if (session.isCompleted) {
+      return res.status(403).json({ error: 'Assessment already submitted.' });
+    }
+
+    const exam = await Exam.findById(session.examId);
+    const application = await Application.findById(session.applicationId);
+
+    // Enforce server side time limits
+    const timeElapsedMins = (Date.now() - session.startTime.getTime()) / 1000 / 60;
+    const bufferMins = 1; // 1 minute padding for network delay
+    
+    let finalScore = 0;
+    if (timeElapsedMins > (exam.timeLimitMinutes + bufferMins)) {
+      // Applicant cheated the timer
+      finalScore = 0;
+      session.isFlagged = true;
+      session.flagReason = 'Exceeded server time limit.';
+    } else {
+      // Grade the responses securely
+      let correctCount = 0;
+      exam.questions.forEach(q => {
+        if (answers[q._id] !== undefined && answers[q._id] === q.correctOptionIndex) {
+          correctCount++;
+        }
+      });
+      finalScore = Math.round((correctCount / exam.questions.length) * 100);
+    }
