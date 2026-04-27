@@ -51,3 +51,13 @@ const UserSchema = new mongoose.Schema({
     }],
     completeness: { type: Number, default: 0 }
   },
+   employerProfile: {
+    companyName: String,
+    companyDescription: String,
+    companyWebsite: String,
+    companyLogo: String
+  },
+  createdAt: { type: Date, default: Date.now }
+});
+
+export const User = mongoose.model('User', UserSchema);
