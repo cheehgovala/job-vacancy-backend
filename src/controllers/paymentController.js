@@ -19,7 +19,7 @@ const PLAN_DETAILS = {
 export const initPayment = async (req, res, next) => {
   try {
     const { planId } = req.body;
-    const userId = req.user._id;
+    const userId = req.user.userId || req.user._id;
     
     if (!planId || !PLAN_DETAILS[planId]) {
       return res.status(400).json({
@@ -89,15 +89,18 @@ export const verify = async (req, res, next) => {
     const { tx_ref, status } = req.query;
     
     if (!tx_ref) {
-      return res.status(400).json({
-        success: false,
-        message: "tx_ref missing"
-      });
+      return res.redirect(`${FRONTEND_URL}/payment-failed`);
     }
 
-    const verifyResponse = await pcFetch(`/verify-payment/${encodeURIComponent(tx_ref)}`, { 
-      method: "GET" 
-    });
+    let verifyResponse;
+    try {
+      verifyResponse = await pcFetch(`/verify-payment/${encodeURIComponent(tx_ref)}`, { 
+        method: "GET" 
+      });
+    } catch (fetchErr) {
+      console.error("PayChangu verification API error:", fetchErr.message);
+      // Proceed with verifyResponse undefined to fail gracefully
+    }
 
     const isSuccess = verifyResponse?.status === "success" && verifyResponse?.data?.status === "success";
     const amount = verifyResponse?.data?.amount;
@@ -208,7 +211,7 @@ export const webhookHandler = async (req, res, next) => {
 // Logic to get payment by User
 export const getPaymentsByUser = async (req, res, next) => {
   try {
-    const userId = req.user._id; 
+    const userId = req.user.userId || req.user._id; 
     const { status } = req.query;
 
     const filter = { user: userId };
@@ -235,7 +238,7 @@ export const getPaymentsByUser = async (req, res, next) => {
 export const cancelPayment = async (req, res, next) => {
   try {
     const { paymentId } = req.params;
-    const userId = req.user._id;
+    const userId = req.user.userId || req.user._id;
 
     if (!paymentId) {
       return res.status(400).json({
