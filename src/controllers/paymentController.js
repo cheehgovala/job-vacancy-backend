@@ -84,7 +84,7 @@ export const initPayment = async (req, res, next) => {
   }
 };
 
-const verify = async (req, res, next) => {
+export const verify = async (req, res, next) => {
   try {
     const { tx_ref, status } = req.query;
     
