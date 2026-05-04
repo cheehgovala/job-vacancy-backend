@@ -1,6 +1,8 @@
 import { Application } from '../models/Application.js';
 import { Job } from '../models/Job.js';
 import { User } from '../models/User.js';
+import { Exam } from '../models/Exam.js';
+import { Notification } from '../models/Notification.js';
 import { sendShortlistEmail } from '../utils/emailUtils.js';
 
 const calculateProfileMatch = (job, user) => {
@@ -122,7 +124,11 @@ export const getMyApplications = async (req, res) => {
         select: 'title location salary employerId',
         populate: { path: 'employerId', select: 'employerProfile.companyName' }
       })
-      .populate('assessmentSessionId', 'isCompleted score');
+      .populate({
+        path: 'assessmentSessionId',
+        select: 'isCompleted score examId',
+        populate: { path: 'examId', select: 'passThreshold' }
+      });
     res.json(applications);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -179,6 +185,36 @@ export const updateApplicationStatus = async (req, res) => {
       // send email in background
       sendShortlistEmail(application.applicantId.email, job.title, applicantName);
     }
+
+    // Create In-App Notification
+    let notificationTitle = '';
+    let notificationMessage = '';
+    let notificationType = 'info';
+
+    if (status === 'Shortlisted') {
+      notificationTitle = 'Application Shortlisted! 🎉';
+      notificationMessage = `Congratulations! You have been shortlisted for the position of ${job.title}.`;
+      notificationType = 'success';
+    } else if (status === 'Rejected') {
+      notificationTitle = 'Application Update';
+      notificationMessage = `Your application for ${job.title} has been reviewed. Unfortunately, you were not selected at this time.`;
+      notificationType = 'error';
+    } else if (status === 'Interview Invited') {
+      notificationTitle = 'Interview Invitation 📅';
+      notificationMessage = `You have been invited to interview for ${job.title}! Check your email for details.`;
+      notificationType = 'success';
+    } else {
+      notificationTitle = 'Application Status Changed';
+      notificationMessage = `Your application for ${job.title} is now: ${status}.`;
+      notificationType = 'info';
+    }
+
+    await Notification.create({
+      userId: application.applicantId._id,
+      title: notificationTitle,
+      message: notificationMessage,
+      type: notificationType
+    });
 
     res.json({ message: 'Application status updated successfully', application });
   } catch (error) {

@@ -5,7 +5,7 @@ const ApplicationSchema = new mongoose.Schema({
   applicantId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   status: { 
     type: String, 
-    enum: ['Pending', 'Under Review', 'Shortlisted', 'Interview Invited', 'Rejected', 'Hired'], 
+    enum: ['Pending', 'Pending Assessment', 'Under Review', 'Shortlisted', 'Interview Invited', 'Rejected', 'Hired'], 
     default: 'Pending' 
   },
   matchScore: { type: Number, default: 0 },

@@ -30,6 +30,7 @@ const UserSchema = new mongoose.Schema({
       title: String,
       startDate: Date,
       endDate: Date,
+      duration: String,
       description: String
     }],
     education: [{
@@ -37,7 +38,8 @@ const UserSchema = new mongoose.Schema({
       degree: String,
       fieldOfStudy: String,
       startDate: Date,
-      endDate: Date
+      endDate: Date,
+      year: String
     }],
     certifications: [{
       name: String,

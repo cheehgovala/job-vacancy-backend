@@ -60,6 +60,8 @@ export const startAssessment = async (req, res) => {
 
     res.status(200).json({
       sessionId: session._id,
+      title: exam.title,
+      passThreshold: exam.passThreshold,
       timeLimitMinutes: exam.timeLimitMinutes,
       startTime: session.startTime,
       questions: publicQuestions
