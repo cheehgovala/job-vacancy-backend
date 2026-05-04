@@ -5,7 +5,7 @@ import cloudinary from '../config/cloudinary.js';
 
 export const startAssessment = async (req, res) => {
   try {
-    const { applicationId, examId } = req.body;
+    const { applicationId } = req.body;
     const applicantId = req.user?.userId;
 
     const application = await Application.findOne({ _id: applicationId, applicantId });
@@ -13,10 +13,11 @@ export const startAssessment = async (req, res) => {
       return res.status(404).json({ error: 'Application not found' });
     }
 
-    const exam = await Exam.findById(examId);
+    const exam = await Exam.findOne({ jobId: application.jobId });
     if (!exam) {
-      return res.status(404).json({ error: 'Exam not found' });
+      return res.status(404).json({ error: 'Exam not found for this job' });
     }
+    const examId = exam._id;
 
     //
       let session = await AssessmentSession.findOne({ applicationId, examId });
@@ -186,6 +187,37 @@ export const uploadSnapshot = async (req, res) => {
     await session.save();
 
     res.status(200).json({ message: 'Snapshot saved' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const createExam = async (req, res) => {
+  try {
+    const { jobId, title, timeLimitMinutes, passThreshold, questions } = req.body;
+    
+    // Check if exam already exists for this job
+    let exam = await Exam.findOne({ jobId });
+    
+    if (exam) {
+      // Update existing
+      exam.title = title;
+      exam.timeLimitMinutes = timeLimitMinutes;
+      exam.passThreshold = passThreshold;
+      exam.questions = questions;
+      await exam.save();
+    } else {
+      // Create new
+      exam = await Exam.create({
+        jobId,
+        title,
+        timeLimitMinutes,
+        passThreshold,
+        questions
+      });
+    }
+    
+    res.status(201).json({ message: 'Exam saved successfully', exam });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

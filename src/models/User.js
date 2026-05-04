@@ -20,6 +20,7 @@ const UserSchema = new mongoose.Schema({
       fullName: String,
       title: String,
       bio: String,
+      location: String,
       nationalIdUrl: String
     },
      resume: String,

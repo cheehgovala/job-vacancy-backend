@@ -32,6 +32,8 @@ const calculateProfileMatch = (job, user) => {
   return Math.min(100, Math.round(score));
 };
 
+import { Exam } from '../models/Exam.js';
+
 export const applyToJob = async (req, res) => {
   try {
     const { jobId } = req.params;
@@ -59,12 +61,50 @@ export const applyToJob = async (req, res) => {
       return;
     }
 
+    // Automatically ensure an Exam exists for this Job (Fallback logic)
+    let exam = await Exam.findOne({ jobId });
+    if (!exam) {
+      exam = await Exam.create({
+        jobId,
+        title: job.title + ' Assessment',
+        timeLimitMinutes: 20,
+        passThreshold: 70,
+        questions: [
+          {
+            text: "What is the primary difference between state and props in React?",
+            options: [
+              "State is meant to be passed down; props are meant to be updated",
+              "State is private to a component; props are arguments passed to it",
+              "They are completely identical concepts",
+              "State handles CSS; props handle HTML"
+            ],
+            correctOptionIndex: 1
+          },
+          {
+            text: "Which hook should you use to perform side effects in a function component?",
+            options: ["useContext", "useState", "useEffect", "useReducer"],
+            correctOptionIndex: 2
+          },
+          {
+            text: "What does JSX stand for?",
+            options: [
+              "JavaScript XML",
+              "Java Standard Extension",
+              "JavaScript Syntax Extension",
+              "JSON Syntax Extension"
+            ],
+            correctOptionIndex: 0
+          }
+        ]
+      });
+    }
+
     const matchScoreBase = calculateProfileMatch(job, user);
 
     const application = await Application.create({
       jobId,
       applicantId: userId,
-      status: 'Pending',
+      status: 'Pending Assessment',
       matchScore: matchScoreBase
     });
 
@@ -77,7 +117,12 @@ export const applyToJob = async (req, res) => {
 export const getMyApplications = async (req, res) => {
   try {
     const applications = await Application.find({ applicantId: req.user?.userId })
-      .populate('jobId', 'title location salary');
+      .populate({
+        path: 'jobId',
+        select: 'title location salary employerId',
+        populate: { path: 'employerId', select: 'employerProfile.companyName' }
+      })
+      .populate('assessmentSessionId', 'isCompleted score');
     res.json(applications);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -150,8 +195,9 @@ export const getEmployerApplications = async (req, res) => {
     
     // Find applications for all these jobs
     const applications = await Application.find({ jobId: { $in: jobIds } })
-      .populate('applicantId', 'name email seekerProfile')
+      .populate('applicantId', 'name email profilePicture seekerProfile')
       .populate('jobId', 'title')
+      .populate('assessmentSessionId', 'score isCompleted isFlagged flagReason')
       .sort({ appliedAt: -1 });
       
     res.json(applications);

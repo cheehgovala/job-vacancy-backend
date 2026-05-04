@@ -1,7 +1,7 @@
 import express from 'express';
 import { protect, authorizeRoles } from '../middlewares/authMiddleware.js';
 import { requireSubscription } from '../middlewares/subscriptionMiddleware.js';
-import { startAssessment, submitAssessment, logViolation, uploadSnapshot } from '../controllers/assessmentController.js';
+import { startAssessment, submitAssessment, logViolation, uploadSnapshot, createExam } from '../controllers/assessmentController.js';
 
 const router = express.Router();
 
@@ -9,5 +9,8 @@ router.post('/start', protect, authorizeRoles('seeker'), requireSubscription, st
 router.post('/submit', protect, authorizeRoles('seeker'), submitAssessment);
 router.post('/log-violation', protect, authorizeRoles('seeker'), logViolation);
 router.post('/proctoring-snapshot', protect, authorizeRoles('seeker'), uploadSnapshot);
+
+// Employer Exam Builder
+router.post('/exams', protect, authorizeRoles('employer'), createExam);
 
 export default router;

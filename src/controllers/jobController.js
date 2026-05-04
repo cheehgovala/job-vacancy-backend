@@ -66,3 +66,50 @@ export const saveJob = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+export const getEmployerJobs = async (req, res) => {
+  try {
+    const jobs = await Job.find({ employerId: req.user?.userId }).sort({ createdAt: -1 });
+    res.json(jobs);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const updateJob = async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id);
+    
+    if (!job) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+
+    if (job.employerId.toString() !== req.user?.userId.toString()) {
+      return res.status(403).json({ error: 'Not authorized to update this job' });
+    }
+
+    const updatedJob = await Job.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json(updatedJob);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const deleteJob = async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id);
+    
+    if (!job) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+
+    if (job.employerId.toString() !== req.user?.userId.toString()) {
+      return res.status(403).json({ error: 'Not authorized to delete this job' });
+    }
+
+    await job.deleteOne();
+    res.json({ message: 'Job removed successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
