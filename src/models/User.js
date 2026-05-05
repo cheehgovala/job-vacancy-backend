@@ -10,6 +10,8 @@ const UserSchema = new mongoose.Schema({
   documentStatus: { type: String, enum: ['Pending', 'Verified', 'Rejected'], default: 'Pending' },
   otp: { type: String },
   otpExpiry: { type: Date },
+  resetPasswordOtp: { type: String },
+  resetPasswordOtpExpiry: { type: Date },
   hasActiveSubscription: { type: Boolean, default: false },
   subscriptionPlan: { type: String },
   subscriptionExpiry: { type: Date },

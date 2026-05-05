@@ -3,6 +3,32 @@ import { Exam } from '../models/Exam.js';
 import { Application } from '../models/Application.js';
 import cloudinary from '../config/cloudinary.js';
 
+export const getExamDetails = async (req, res) => {
+  try {
+    const { applicationId } = req.params;
+    const applicantId = req.user?.userId;
+
+    const application = await Application.findOne({ _id: applicationId, applicantId });
+    if (!application) {
+      return res.status(404).json({ error: 'Application not found' });
+    }
+
+    const exam = await Exam.findOne({ jobId: application.jobId });
+    if (!exam) {
+      return res.status(404).json({ error: 'Exam not found for this job' });
+    }
+
+    res.status(200).json({
+      title: exam.title,
+      timeLimitMinutes: exam.timeLimitMinutes,
+      passThreshold: exam.passThreshold,
+      questionCount: exam.questions.length
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 export const startAssessment = async (req, res) => {
   try {
     const { applicationId } = req.body;
@@ -55,7 +81,8 @@ export const startAssessment = async (req, res) => {
     const publicQuestions = exam.questions.map(q => ({
       _id: q._id,
       text: q.text,
-      options: q.options
+      type: q.type,
+      options: q.type === 'text' ? [] : q.options
     }));
 
     res.status(200).json({
@@ -100,8 +127,16 @@ export const submitAssessment = async (req, res) => {
       // Grade the responses securely
       let correctCount = 0;
       exam.questions.forEach(q => {
-        if (answers[q._id] !== undefined && answers[q._id] === q.correctOptionIndex) {
-          correctCount++;
+        if (q.type === 'text') {
+          const userAnswer = (answers[q._id] || '').toString().trim().toLowerCase();
+          const correctAns = (q.options[0] || '').toString().trim().toLowerCase();
+          if (userAnswer && userAnswer === correctAns) {
+            correctCount++;
+          }
+        } else {
+          if (answers[q._id] !== undefined && Number(answers[q._id]) === q.correctOptionIndex) {
+            correctCount++;
+          }
         }
       });
       finalScore = Math.round((correctCount / exam.questions.length) * 100);
@@ -151,14 +186,18 @@ export const logViolation = async (req, res) => {
 
     session.violationLogs.push({ event, timestamp: Date.now() });
     
-    // Auto flag if too many violations
-    if (session.violationLogs.length >= 3 && !session.isFlagged) {
+    // Auto flag if too many violations (limit set to 2)
+    if (session.violationLogs.length >= 2 && !session.isFlagged) {
       session.isFlagged = true;
-      session.flagReason = 'Excessive environment violations (e.g. Tab switching).';
+      session.flagReason = 'Excessive environment violations (e.g. Tab switching, exiting full-screen).';
     }
     
     await session.save();
-    res.status(200).json({ message: 'Violation logged', isFlagged: session.isFlagged });
+    res.status(200).json({ 
+      message: 'Violation logged', 
+      isFlagged: session.isFlagged,
+      violationCount: session.violationLogs.length
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

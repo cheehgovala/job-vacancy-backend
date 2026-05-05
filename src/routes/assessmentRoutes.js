@@ -1,10 +1,11 @@
 import express from 'express';
 import { protect, authorizeRoles } from '../middlewares/authMiddleware.js';
 import { requireSubscription } from '../middlewares/subscriptionMiddleware.js';
-import { startAssessment, submitAssessment, logViolation, uploadSnapshot, createExam } from '../controllers/assessmentController.js';
+import { startAssessment, submitAssessment, logViolation, uploadSnapshot, createExam, getExamDetails } from '../controllers/assessmentController.js';
 
 const router = express.Router();
 
+router.get('/details/:applicationId', protect, authorizeRoles('seeker'), getExamDetails);
 router.post('/start', protect, authorizeRoles('seeker'), requireSubscription, startAssessment);
 router.post('/submit', protect, authorizeRoles('seeker'), submitAssessment);
 router.post('/log-violation', protect, authorizeRoles('seeker'), logViolation);

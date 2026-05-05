@@ -7,6 +7,7 @@ const ExamSchema = new mongoose.Schema({
   passThreshold: { type: Number, default: 70 },
   questions: [{
     text: { type: String, required: true },
+    type: { type: String, enum: ['mcq', 'bool', 'text'], default: 'mcq' },
     options: [{ type: String, required: true }],
     correctOptionIndex: { type: Number, required: true }
   }],

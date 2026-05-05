@@ -5,6 +5,16 @@ export const createJob = async (req, res) => {
   try {
     const { title, description, requirements, location, salary, jobType, applicationDeadline } = req.body;
 
+    if (salary && salary !== 'Negotiable' && salary !== 'Competitive') {
+      const match = salary.match(/MWK (.*) - (.*)/);
+      if (match) {
+        const minS = parseInt(match[1].replace(/,/g, ''), 10);
+        if (isNaN(minS) || minS < 90000) {
+          return res.status(400).json({ error: 'Minimum salary must be at least 90,000 MWK' });
+        }
+      }
+    }
+
     const job = await Job.create({
       employerId: req.user?.userId,
       title,
@@ -86,6 +96,17 @@ export const updateJob = async (req, res) => {
 
     if (job.employerId.toString() !== req.user?.userId.toString()) {
       return res.status(403).json({ error: 'Not authorized to update this job' });
+    }
+
+    const { salary } = req.body;
+    if (salary && salary !== 'Negotiable' && salary !== 'Competitive') {
+      const match = salary.match(/MWK (.*) - (.*)/);
+      if (match) {
+        const minS = parseInt(match[1].replace(/,/g, ''), 10);
+        if (isNaN(minS) || minS < 90000) {
+          return res.status(400).json({ error: 'Minimum salary must be at least 90,000 MWK' });
+        }
+      }
     }
 
     const updatedJob = await Job.findByIdAndUpdate(req.params.id, req.body, { new: true });

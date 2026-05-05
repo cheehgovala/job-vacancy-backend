@@ -34,7 +34,6 @@ const calculateProfileMatch = (job, user) => {
   return Math.min(100, Math.round(score));
 };
 
-import { Exam } from '../models/Exam.js';
 
 export const applyToJob = async (req, res) => {
   try {
@@ -174,6 +173,11 @@ export const updateApplicationStatus = async (req, res) => {
     const job = application.jobId;
     if (job.employerId.toString() !== req.user?.userId) {
       res.status(403).json({ error: 'Not authorized to update this application' });
+      return;
+    }
+
+    if (status === 'Shortlisted' && application.status === 'Rejected') {
+      res.status(400).json({ error: 'Cannot shortlist a candidate whose application was automatically rejected.' });
       return;
     }
 
