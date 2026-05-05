@@ -56,6 +56,11 @@ export const applyToJob = async (req, res) => {
       return;
     }
 
+    if (new Date() > new Date(job.applicationDeadline)) {
+      res.status(400).json({ error: 'Due date is over for this job' });
+      return;
+    }
+
     const existingApplication = await Application.findOne({ jobId, applicantId: userId });
     if (existingApplication) {
       res.status(400).json({ error: 'You have already applied for this job' });

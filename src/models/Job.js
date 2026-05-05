@@ -9,16 +9,20 @@ const JobSchema = new mongoose.Schema({
   salary: { type: String, required: true },
   jobType: { 
     type: String, 
-    enum: ['Full-Time', 'Part-Time', 'Contract', 'Internship', 'Remote'],
-    default: 'Full-Time' 
+    enum: ['Full-time', 'Part-time', 'Contract', 'Internship', 'Remote'],
+    default: 'Full-time' 
   },
   experienceLevel: {
     type: String,
-    enum: ['Entry-Level', 'Mid-Level', 'Senior-Level', 'Executive']
+    enum: ['Entry Level', 'Mid Level', 'Senior', 'Executive']
   },
-  category: { type: String },
-  applicationDeadline: { type: Date },
-  createdAt: { type: Date, default: Date.now }
+  category: { 
+    type: String,
+    enum: ['Technology', 'Design', 'Finance', 'Telecommunications', 'Other']
+  },
+  applicationDeadline: { type: Date, required: true },
+  createdAt: { type: Date, default: Date.now },
+  expiresAt: { type: Date, expires: 0 }
 });
 
 export const Job = mongoose.model('Job', JobSchema);

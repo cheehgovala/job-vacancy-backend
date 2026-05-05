@@ -8,12 +8,25 @@ export const createJob = async (req, res) => {
     if (salary && salary !== 'Negotiable' && salary !== 'Competitive') {
       const match = salary.match(/MWK (.*) - (.*)/);
       if (match) {
-        const minS = parseInt(match[1].replace(/,/g, ''), 10);
+        let minStr = match[1].replace(/,/g, '');
+        if (minStr.includes('M')) {
+          minStr = parseFloat(minStr.replace('M', '')) * 1000000;
+        } else if (minStr.includes('K')) {
+          minStr = parseFloat(minStr.replace('K', '')) * 1000;
+        }
+        const minS = parseInt(minStr, 10);
         if (isNaN(minS) || minS < 90000) {
           return res.status(400).json({ error: 'Minimum salary must be at least 90,000 MWK' });
         }
       }
     }
+
+    if (!applicationDeadline) {
+      return res.status(400).json({ error: 'Application deadline is required' });
+    }
+
+    const expiresAt = new Date(applicationDeadline);
+    expiresAt.setDate(expiresAt.getDate() + 5);
 
     const job = await Job.create({
       employerId: req.user?.userId,
@@ -23,7 +36,8 @@ export const createJob = async (req, res) => {
       location,
       salary,
       jobType,
-      applicationDeadline
+      applicationDeadline,
+      expiresAt
     });
 
     res.status(201).json(job);
@@ -63,7 +77,7 @@ export const saveJob = async (req, res) => {
     }
 
     const jobId = req.params.id;
-    if (user.savedJobs.includes(jobId)) {
+    if (user.savedJobs.some(id => id.toString() === jobId)) {
       res.status(400).json({ error: 'Job already saved' });
       return; 
     }
@@ -98,11 +112,24 @@ export const updateJob = async (req, res) => {
       return res.status(403).json({ error: 'Not authorized to update this job' });
     }
 
-    const { salary } = req.body;
+    const { salary, applicationDeadline } = req.body;
+    
+    if (applicationDeadline) {
+      const expiresAt = new Date(applicationDeadline);
+      expiresAt.setDate(expiresAt.getDate() + 5);
+      req.body.expiresAt = expiresAt;
+    }
+
     if (salary && salary !== 'Negotiable' && salary !== 'Competitive') {
       const match = salary.match(/MWK (.*) - (.*)/);
       if (match) {
-        const minS = parseInt(match[1].replace(/,/g, ''), 10);
+        let minStr = match[1].replace(/,/g, '');
+        if (minStr.includes('M')) {
+          minStr = parseFloat(minStr.replace('M', '')) * 1000000;
+        } else if (minStr.includes('K')) {
+          minStr = parseFloat(minStr.replace('K', '')) * 1000;
+        }
+        const minS = parseInt(minStr, 10);
         if (isNaN(minS) || minS < 90000) {
           return res.status(400).json({ error: 'Minimum salary must be at least 90,000 MWK' });
         }
