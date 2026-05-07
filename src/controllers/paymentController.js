@@ -44,8 +44,8 @@ export const initPayment = async (req, res, next) => {
       email: user.email,
       first_name: user.name.split(' ')[0],
       last_name: user.name.split(' ').slice(1).join(' ') || 'User',
-      callback_url: CALLBACK_URL,
-      return_url: FRONTEND_URL,
+      callback_url: `${BACKEND_URL}/api/payments/webhook`,
+      return_url: `${BACKEND_URL}/api/payments/verify`,
       tx_ref,
     };
 

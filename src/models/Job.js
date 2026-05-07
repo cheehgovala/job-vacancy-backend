@@ -21,8 +21,7 @@ const JobSchema = new mongoose.Schema({
     enum: ['Technology', 'Design', 'Finance', 'Telecommunications', 'Other']
   },
   applicationDeadline: { type: Date, required: true },
-  createdAt: { type: Date, default: Date.now },
-  expiresAt: { type: Date, expires: 0 }
+  createdAt: { type: Date, default: Date.now }
 });
 
 export const Job = mongoose.model('Job', JobSchema);

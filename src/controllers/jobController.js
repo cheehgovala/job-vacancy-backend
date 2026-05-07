@@ -21,12 +21,11 @@ export const createJob = async (req, res) => {
       }
     }
 
-    if (!applicationDeadline) {
-      return res.status(400).json({ error: 'Application deadline is required' });
+    let finalDeadline = applicationDeadline;
+    if (!finalDeadline) {
+      finalDeadline = new Date();
+      finalDeadline.setDate(finalDeadline.getDate() + 30); // Default to 30 days
     }
-
-    const expiresAt = new Date(applicationDeadline);
-    expiresAt.setDate(expiresAt.getDate() + 5);
 
     const job = await Job.create({
       employerId: req.user?.userId,
@@ -36,8 +35,7 @@ export const createJob = async (req, res) => {
       location,
       salary,
       jobType,
-      applicationDeadline,
-      expiresAt
+      applicationDeadline: finalDeadline
     });
 
     res.status(201).json(job);
@@ -113,12 +111,6 @@ export const updateJob = async (req, res) => {
     }
 
     const { salary, applicationDeadline } = req.body;
-    
-    if (applicationDeadline) {
-      const expiresAt = new Date(applicationDeadline);
-      expiresAt.setDate(expiresAt.getDate() + 5);
-      req.body.expiresAt = expiresAt;
-    }
 
     if (salary && salary !== 'Negotiable' && salary !== 'Competitive') {
       const match = salary.match(/MWK (.*) - (.*)/);
