@@ -3,23 +3,14 @@ import { User } from '../models/User.js';
 
 export const createJob = async (req, res) => {
   try {
-    const { title, description, requirements, location, salary, jobType, applicationDeadline } = req.body;
+    const { 
+      title, institution, contractType, contractDuration, rolePurpose, 
+      keyResponsibilities, qualifications, termsAndConditions, submissionEmail,
+      description, skills, requirements, location, jobType, experienceLevel, category,
+      applicationDeadline, hasAssessment, strictRestriction 
+    } = req.body;
 
-    if (salary && salary !== 'Negotiable' && salary !== 'Competitive') {
-      const match = salary.match(/MWK (.*) - (.*)/);
-      if (match) {
-        let minStr = match[1].replace(/,/g, '');
-        if (minStr.includes('M')) {
-          minStr = parseFloat(minStr.replace('M', '')) * 1000000;
-        } else if (minStr.includes('K')) {
-          minStr = parseFloat(minStr.replace('K', '')) * 1000;
-        }
-        const minS = parseInt(minStr, 10);
-        if (isNaN(minS) || minS < 90000) {
-          return res.status(400).json({ error: 'Minimum salary must be at least 90,000 MWK' });
-        }
-      }
-    }
+
 
     let finalDeadline = applicationDeadline;
     if (!finalDeadline) {
@@ -30,12 +21,23 @@ export const createJob = async (req, res) => {
     const job = await Job.create({
       employerId: req.user?.userId,
       title,
+      institution,
+      contractType,
+      contractDuration,
+      rolePurpose,
+      keyResponsibilities,
+      qualifications,
+      termsAndConditions,
+      submissionEmail,
       description,
-      requirements,
+      skills: skills || requirements, // fallback to requirements for backward compatibility
       location,
-      salary,
       jobType,
-      applicationDeadline: finalDeadline
+      experienceLevel,
+      category,
+      applicationDeadline: finalDeadline,
+      hasAssessment,
+      strictRestriction
     });
 
     res.status(201).json(job);
@@ -110,22 +112,12 @@ export const updateJob = async (req, res) => {
       return res.status(403).json({ error: 'Not authorized to update this job' });
     }
 
-    const { salary, applicationDeadline } = req.body;
+    const { applicationDeadline } = req.body;
 
-    if (salary && salary !== 'Negotiable' && salary !== 'Competitive') {
-      const match = salary.match(/MWK (.*) - (.*)/);
-      if (match) {
-        let minStr = match[1].replace(/,/g, '');
-        if (minStr.includes('M')) {
-          minStr = parseFloat(minStr.replace('M', '')) * 1000000;
-        } else if (minStr.includes('K')) {
-          minStr = parseFloat(minStr.replace('K', '')) * 1000;
-        }
-        const minS = parseInt(minStr, 10);
-        if (isNaN(minS) || minS < 90000) {
-          return res.status(400).json({ error: 'Minimum salary must be at least 90,000 MWK' });
-        }
-      }
+
+
+    if (req.body.requirements && !req.body.skills) {
+        req.body.skills = req.body.requirements;
     }
 
     const updatedJob = await Job.findByIdAndUpdate(req.params.id, req.body, { new: true });

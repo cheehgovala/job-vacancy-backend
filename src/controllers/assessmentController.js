@@ -161,9 +161,9 @@ export const submitAssessment = async (req, res) => {
     await session.save();
 
     // Re-evaluate application score and status
-    // Old matchScore (skills + exp) + ExamScore combined weighting
-    const combinedScore = Math.round((application.matchScore + finalScore) / 2);
-    application.matchScore = combinedScore;
+    // Old matchScore is out of 75 points. ExamScore contributes 25 points.
+    const combinedScore = Math.round(application.matchScore + (finalScore * 0.25));
+    application.matchScore = Math.min(100, combinedScore);
 
     // Automatic pre-screening threshold
     if (finalScore < exam.passThreshold) {

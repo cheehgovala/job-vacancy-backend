@@ -5,33 +5,80 @@ import { Exam } from '../models/Exam.js';
 import { Notification } from '../models/Notification.js';
 import { sendShortlistEmail } from '../utils/emailUtils.js';
 
-const calculateProfileMatch = (job, user) => {
+import stringSimilarity from 'string-similarity';
+
+const calculateCVCompleteness = (profile) => {
   let score = 0;
+  const maxScore = 5; 
+  
+  if (profile.personal?.fullName && profile.personal?.title) score += 1;
+  if (profile.skills && profile.skills.length > 0) score += 1;
+  if (profile.experience && profile.experience.length > 0) score += 1;
+  if (profile.education && profile.education.length > 0) score += 1;
+  if (profile.resume) score += 1;
+
+  return Math.round((score / maxScore) * 100);
+};
+
+const calculateProfileMatch = (job, user) => {
   const profile = user.seekerProfile || {};
   
-  // 1. Skills match (up to 50 points)
-  const jobReqs = job.requirements || [];
+  // 1. CV Completeness (10%)
+  const cvCompletenessScore = calculateCVCompleteness(profile);
+  
+  // 2. Title Match (10%)
+  let titleMatchScore = 0;
+  if (job.title && profile.personal?.title) {
+    const similarity = stringSimilarity.compareTwoStrings(job.title.toLowerCase(), profile.personal.title.toLowerCase());
+    titleMatchScore = Math.round(similarity * 100);
+  }
+
+  // 3. Skills Match (35%)
+  let skillsScore = 0;
+  const jobReqs = job.skills && job.skills.length > 0 ? job.skills : (job.requirements || []);
   const userSkills = profile.skills || [];
   if (jobReqs.length > 0) {
-    const matchedSkills = jobReqs.filter(req => 
-      userSkills.some(skill => skill.toLowerCase().includes(req.toLowerCase()))
-    );
-    score += (matchedSkills.length / jobReqs.length) * 50;
+    let matchedCount = 0;
+    const userSkillsArr = userSkills.length > 0 ? userSkills.map(s => s.toLowerCase()) : [''];
+    
+    jobReqs.forEach(req => {
+       const reqLower = req.toLowerCase();
+       const bestMatch = stringSimilarity.findBestMatch(reqLower, userSkillsArr);
+       if (bestMatch.bestMatch.rating > 0.6 || userSkills.some(skill => skill.toLowerCase().includes(reqLower))) {
+          matchedCount++;
+       }
+    });
+    skillsScore = Math.round((matchedCount / jobReqs.length) * 100);
   } else {
-    score += 50; // no specific skill requirements
+    skillsScore = 100; // if no skills required, give full marks
   }
    
-  // 2. Experience level Match (up to 50 points)
-  // Simplified matching: if entry-level required, everyone gets 50
-  // if senior, we check if they have multiple experience entries
+  // 4. Experience Level Match (20%)
+  let expScore = 0;
   const numJobs = (profile.experience || []).length;
-  if (job.experienceLevel === 'Executive' && numJobs > 4) score += 50;
-  else if (job.experienceLevel === 'Senior-Level' && numJobs >= 3) score += 50;
-  else if (job.experienceLevel === 'Mid-Level' && numJobs >= 1) score += 50;
-  else if (job.experienceLevel === 'Entry-Level') score += 50;
-  else score += 25; // Default partial points
+  if (job.experienceLevel === 'Executive' && numJobs > 4) expScore = 100;
+  else if (job.experienceLevel === 'Senior' && numJobs >= 3) expScore = 100;
+  else if (job.experienceLevel === 'Mid Level' && numJobs >= 1) expScore = 100;
+  else if (job.experienceLevel === 'Entry Level') expScore = 100;
+  else expScore = 50; // Partial match fallback
+
+  // 5. Final Hybrid Weighting
+  let finalScore = 0;
+  if (job.hasAssessment) {
+     // Max 75 points here. The remaining 25 points are added in assessmentController.js
+     finalScore = (skillsScore * 0.35) + (expScore * 0.20) + (cvCompletenessScore * 0.10) + (titleMatchScore * 0.10);
+  } else {
+     // Scale to 100 points because there is no assessment (multiply weights by 100/75)
+     finalScore = (skillsScore * (0.35/0.75)) + (expScore * (0.20/0.75)) + (cvCompletenessScore * (0.10/0.75)) + (titleMatchScore * (0.10/0.75));
+  }
   
-  return Math.min(100, Math.round(score));
+  return {
+    combinedScore: Math.min(100, Math.round(finalScore)),
+    cvCompletenessScore,
+    skillsScore,
+    expScore,
+    titleMatchScore
+  };
 };
 
 
@@ -105,13 +152,18 @@ export const applyToJob = async (req, res) => {
       });
     }
 
-    const matchScoreBase = calculateProfileMatch(job, user);
+    const matchData = calculateProfileMatch(job, user);
+
+    if (matchData.cvCompletenessScore < 65) {
+      res.status(400).json({ error: 'Your CV completeness is less than 65%. Please update your profile before applying.' });
+      return;
+    }
 
     const application = await Application.create({
       jobId,
       applicantId: userId,
-      status: 'Pending Assessment',
-      matchScore: matchScoreBase
+      status: job.hasAssessment ? 'Pending Assessment' : 'Applied',
+      matchScore: matchData.combinedScore
     });
 
     res.status(201).json({ message: 'Application submitted perfectly', application });
@@ -125,7 +177,7 @@ export const getMyApplications = async (req, res) => {
     const applications = await Application.find({ applicantId: req.user?.userId })
       .populate({
         path: 'jobId',
-        select: 'title location salary employerId',
+        select: 'title location employerId',
         populate: { path: 'employerId', select: 'employerProfile.companyName' }
       })
       .populate({
