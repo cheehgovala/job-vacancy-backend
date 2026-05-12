@@ -11,26 +11,7 @@ export const createJob = async (req, res) => {
     } = req.body;
 
 
-<<<<<<< HEAD
-=======
-    if (salary && salary !== 'Negotiable' && salary !== 'Competitive') {
-      // Extract numbers to check for minimum salary if possible
-      const numbers = salary.match(/\d+/g);
-      if (numbers && numbers.length > 0) {
-        let minVal = parseInt(numbers[0].replace(/,/g, ''), 10);
-        // Basic heuristic for 'M' or 'K' in the string
-        if (salary.toUpperCase().includes('M') && minVal < 100) {
-           minVal = minVal * 1000000;
-        } else if (salary.toUpperCase().includes('K') && minVal < 1000) {
-           minVal = minVal * 1000;
-        }
 
-        if (!isNaN(minVal) && minVal > 0 && minVal < 90000) {
-          return res.status(400).json({ error: 'Minimum salary must be at least 90,000 MWK' });
-        }
-      }
-    }
->>>>>>> fb0f13ae65d069d9c78f05d9405d07cec26dcdc8
 
     let finalDeadline = applicationDeadline;
     if (!finalDeadline) {
@@ -134,27 +115,8 @@ export const updateJob = async (req, res) => {
 
     const { applicationDeadline } = req.body;
 
-<<<<<<< HEAD
-
-
     if (req.body.requirements && !req.body.skills) {
         req.body.skills = req.body.requirements;
-=======
-    if (salary && salary !== 'Negotiable' && salary !== 'Competitive') {
-      const numbers = salary.match(/\d+/g);
-      if (numbers && numbers.length > 0) {
-        let minVal = parseInt(numbers[0].replace(/,/g, ''), 10);
-        if (salary.toUpperCase().includes('M') && minVal < 100) {
-           minVal = minVal * 1000000;
-        } else if (salary.toUpperCase().includes('K') && minVal < 1000) {
-           minVal = minVal * 1000;
-        }
-
-        if (!isNaN(minVal) && minVal > 0 && minVal < 90000) {
-          return res.status(400).json({ error: 'Minimum salary must be at least 90,000 MWK' });
-        }
-      }
->>>>>>> fb0f13ae65d069d9c78f05d9405d07cec26dcdc8
     }
 
     const updatedJob = await Job.findByIdAndUpdate(req.params.id, req.body, { new: true });

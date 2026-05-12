@@ -5,8 +5,8 @@ import crypto from "crypto";
 
 const WEBHOOK_SECRET = process.env.PAYCHANGU_WEBHOOK_SECRET;
 const CURRENCY = process.env.PAYCHANGU_CURRENCY || "MWK";
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:5000";
-const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+const BACKEND_URL = "http://127.0.0.1:5000";
+const FRONTEND_URL = "http://localhost:5173";
 const CALLBACK_URL = `${BACKEND_URL}/api/payments/verify`;
 
 const PLAN_DETAILS = {
