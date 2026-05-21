@@ -1,6 +1,7 @@
 import { AssessmentSession } from '../models/AssessmentSession.js';
 import { Exam } from '../models/Exam.js';
 import { Application } from '../models/Application.js';
+import { Job } from '../models/Job.js';
 import cloudinary from '../config/cloudinary.js';
 
 export const getExamByJobId = async (req, res) => {
@@ -272,6 +273,21 @@ export const createExam = async (req, res) => {
     }
     
     res.status(201).json({ message: 'Exam saved successfully', exam });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const getEmployerExams = async (req, res) => {
+  try {
+    const employerId = req.user?.userId;
+    // Find all jobs by this employer
+    const jobs = await Job.find({ employerId }).select('_id title');
+    const jobIds = jobs.map(j => j._id);
+    
+    // Find exams for these jobs
+    const exams = await Exam.find({ jobId: { $in: jobIds } }).populate('jobId', 'title');
+    res.status(200).json(exams);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
