@@ -13,6 +13,17 @@
 
 const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
 
+// Log email config on startup so you can confirm it's loaded in Render logs
+const _apiKey = process.env.BREVO_API_KEY;
+const _fromEmail = process.env.EMAIL_FROM;
+if (!_apiKey || _apiKey === 'YOUR_SMTP_KEY') {
+  console.error('[Email] ❌ BREVO_API_KEY is missing or is still the placeholder value — emails will NOT be sent');
+} else if (!_fromEmail) {
+  console.error('[Email] ❌ EMAIL_FROM is not set — emails will NOT be sent');
+} else {
+  console.log(`[Email] ✅ Ready — sending from ${_fromEmail} via Brevo`);
+}
+
 const sendEmail = async (to, subject, html) => {
   const apiKey = process.env.BREVO_API_KEY;
   const fromEmail = process.env.EMAIL_FROM || process.env.EMAIL_USER;
